@@ -9,11 +9,9 @@ import { showSuccess, showConfirm } from './utils/alerts';
 import { closeDateAndRelocateVisits } from './utils/dateUtils';
 
 function App() {
-
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
 
@@ -153,6 +151,7 @@ function App() {
         onSave={handleSaveVisit}
         visits={visits}
         editingVisit={editingVisit}
+        initialDate={selectedDate}
       />
     </>
   );

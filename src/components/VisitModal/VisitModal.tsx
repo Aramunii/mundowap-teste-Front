@@ -31,6 +31,7 @@ interface VisitModalProps {
   onSave: (visit: Omit<Visit, 'id'>) => void;
   visits: Visit[];
   editingVisit?: Visit | null;
+  initialDate?: string;
 }
 
 export const VisitModal: React.FC<VisitModalProps> = ({
@@ -38,7 +39,8 @@ export const VisitModal: React.FC<VisitModalProps> = ({
   onClose,
   onSave,
   visits,
-  editingVisit
+  editingVisit,
+  initialDate
 }) => {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [cepError, setCepError] = useState('');
@@ -79,13 +81,15 @@ export const VisitModal: React.FC<VisitModalProps> = ({
           complemento: editingVisit.endereco.complemento || ''
         });
         
-        // Habilita edição de campos do endereço
         setCanEditLogradouro(true);
         setCanEditBairro(true);
+        setCanEditUf(true);
+        setCanEditCidade(true);
+
       } else {
-        // Modo criação - limpa o formulário
+        // Modo criação - limpa o formulário e preenche com a data selecionada
         reset({
-          data: '',
+          data: initialDate || new Date().toISOString().split('T')[0],
           quantidadeFormularios: '',
           quantidadeProdutos: '',
           cep: '',
@@ -99,11 +103,13 @@ export const VisitModal: React.FC<VisitModalProps> = ({
         
         setCanEditLogradouro(false);
         setCanEditBairro(false);
+        setCanEditUf(false);
+        setCanEditCidade(false);
       }
       
       setCepError('');
     }
-  }, [isOpen, editingVisit, reset]);
+  }, [isOpen, editingVisit, initialDate, reset]);
 
   const cepValue = watch('cep');
   const dataValue = watch('data');
@@ -132,6 +138,8 @@ export const VisitModal: React.FC<VisitModalProps> = ({
         setValue('bairro', '');
         setCanEditBairro(false);
         setCanEditLogradouro(false);
+        setCanEditUf(false);
+        setCanEditCidade(false);
       }
       setCepError('');
     }
@@ -148,6 +156,8 @@ export const VisitModal: React.FC<VisitModalProps> = ({
     setValue('bairro', '');
     setCanEditBairro(false);
     setCanEditLogradouro(false);
+    setCanEditUf(false);
+    setCanEditCidade(false);
 
     try {
       const address = await getAddressByCep(cep);
@@ -159,11 +169,15 @@ export const VisitModal: React.FC<VisitModalProps> = ({
       
       setCanEditLogradouro(!address.logradouro || address.logradouro.length === 0);
       setCanEditBairro(!address.bairro || address.bairro.length === 0);
+        setCanEditUf(!address.uf || address.uf.length === 0);
+        setCanEditCidade(!address.localidade || address.localidade.length === 0);
       
     } catch (error) {
       setCepError('CEP não encontrado');
       setCanEditBairro(true);
       setCanEditLogradouro(true);
+        setCanEditUf(true);
+        setCanEditCidade(true);
     } finally {
       setIsLoadingCep(false);
     }
@@ -240,7 +254,8 @@ export const VisitModal: React.FC<VisitModalProps> = ({
 
   // Calcula o tempo disponível
   const availableMinutes = MAX_MINUTES_PER_DAY - usedMinutes;
-
+  
+  // Verifica se vai ultrapassar o limite
   const willExceedLimit = estimatedDuration > availableMinutes;
 
   if (!isOpen) return null;
@@ -302,11 +317,11 @@ export const VisitModal: React.FC<VisitModalProps> = ({
 
             {estimatedDuration > 0 && !willExceedLimit && (
               <InfoMessage>
-                 Duração estimada: {formatMinutes(estimatedDuration)}
+                ⏱️ Duração estimada: {formatMinutes(estimatedDuration)}
                 {dataValue && (
                   <>
                     <br />
-                    Tempo disponível na data: {formatMinutes(availableMinutes)}
+                    📊 Tempo disponível na data: {formatMinutes(availableMinutes)}
                   </>
                 )}
               </InfoMessage>
@@ -314,13 +329,13 @@ export const VisitModal: React.FC<VisitModalProps> = ({
 
             {willExceedLimit && dataValue && (
               <WarningMessage>
-                ATENÇÃO: Limite de 8 horas ultrapassado!
+                ⚠️ ATENÇÃO: Limite de 8 horas ultrapassado!
                 <br />
-                Duração da visita: {formatMinutes(estimatedDuration)}
+                🚫 Duração da visita: {formatMinutes(estimatedDuration)}
                 <br />
-                Tempo disponível: {formatMinutes(availableMinutes)}
+                ✅ Tempo disponível: {formatMinutes(availableMinutes)}
                 <br />
-                Excedente: {formatMinutes(estimatedDuration - availableMinutes)}
+                ❌ Excedente: {formatMinutes(estimatedDuration - availableMinutes)}
               </WarningMessage>
             )}
 
@@ -329,7 +344,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Label>CEP *</Label>
                 <Input
                   type="text"
-                  maxLength={9}
+                  maxLength={8}
                   placeholder="00000-000"
                   {...register('cep', {
                     required: 'CEP é obrigatório',
@@ -351,7 +366,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Input
                   type="text"
                   {...register('uf')}
-                  disabled
+                  disabled ={isLoadingCep || (!canEditUf && !editingVisit)}
                   readOnly
                 />
               </FormGroup>
@@ -361,7 +376,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Input
                   type="text"
                   {...register('cidade')}
-                  disabled
+                  disabled ={isLoadingCep || (!canEditCidade && !editingVisit)}
                   readOnly
                 />
               </FormGroup>
