@@ -1,8 +1,8 @@
 import { Visit } from '../types/visit';
 
-export const MAX_MINUTES_PER_DAY = 8 * 60; // 8 horas = 480 minutos
-export const MINUTES_PER_FORM = 15; // Cada formulário = 15 minutos
-export const MINUTES_PER_PRODUCT = 5; // Cada produto = 5 minutos
+export const MAX_MINUTES_PER_DAY = 8 * 60;
+export const MINUTES_PER_FORM = 15;
+export const MINUTES_PER_PRODUCT = 5;
 
 /**
  * Calcula a duração total de uma visita em minutos

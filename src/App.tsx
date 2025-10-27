@@ -7,6 +7,7 @@ import { Visit } from './types/visit';
 import { GlobalStyles } from './App.styles';
 import { showSuccess, showConfirm } from './utils/alerts';
 import { closeDateAndRelocateVisits } from './utils/dateUtils';
+import { useVisits } from './hooks/useVisits';
 
 function App() {
   const [selectedDate, setSelectedDate] = useState<string>(
@@ -15,56 +16,14 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
 
-  const [visits, setVisits] = useState<Visit[]>([
-    {
-      id: '1',
-      data: new Date().toISOString(),
-      status: 'pendente',
-      quantidadeFormularios: 3,
-      quantidadeProdutos: 5,
-      endereco: {
-        cep: '01310-100',
-        uf: 'SP',
-        cidade: 'São Paulo',
-        logradouro: 'Avenida Paulista',
-        bairro: 'Bela Vista',
-        numero: '1578',
-        complemento: ''
-      }
-    },
-    {
-      id: '2',
-      data: new Date().toISOString(),
-      status: 'concluido',
-      quantidadeFormularios: 2,
-      quantidadeProdutos: 3,
-      endereco: {
-        cep: '01310-200',
-        uf: 'SP',
-        cidade: 'São Paulo',
-        logradouro: 'Rua Augusta',
-        bairro: 'Consolação',
-        numero: '2000',
-        complemento: 'Apto 101'
-      }
-    },
-    {
-      id: '3',
-      data: new Date().toISOString(),
-      status: 'pendente',
-      quantidadeFormularios: 1,
-      quantidadeProdutos: 2,
-      endereco: {
-        cep: '01310-300',
-        uf: 'SP',
-        cidade: 'São Paulo',
-        logradouro: 'Rua da Consolação',
-        bairro: 'Consolação',
-        numero: '100',
-        complemento: ''
-      }
-    }
-  ]);
+  const {
+    visits,
+    isLoading,
+    addVisit,
+    updateVisit,
+    completeVisit,
+    replaceAllVisits
+  } = useVisits();
 
   const handleOpenModal = () => {
     setEditingVisit(null);
@@ -78,18 +37,9 @@ function App() {
 
   const handleSaveVisit = (visitData: Omit<Visit, 'id'>) => {
     if (editingVisit) {
-      setVisits(visits.map(v => 
-        v.id === editingVisit.id 
-          ? { ...visitData, id: editingVisit.id, status: editingVisit.status }
-          : v
-      ));
+      updateVisit(editingVisit.id, visitData);
     } else {
-      const newVisit: Visit = {
-        ...visitData,
-        id: Date.now().toString(),
-        status: 'pendente'
-      };
-      setVisits([...visits, newVisit]);
+      addVisit(visitData);
     }
   };
 
@@ -105,11 +55,7 @@ function App() {
     );
 
     if (result.isConfirmed) {
-      setVisits(visits.map(v =>
-        v.id === visitId
-          ? { ...v, status: 'concluido' as const }
-          : v
-      ));
+      completeVisit(visitId);
       showSuccess('Sucesso!', 'Visita marcada como concluída!');
     }
   };
@@ -122,13 +68,31 @@ function App() {
 
     if (result.isConfirmed) {
       const relocatedVisits = closeDateAndRelocateVisits(visits, date);
-      setVisits(relocatedVisits);
+      replaceAllVisits(relocatedVisits);
       showSuccess(
         'Data Fechada!',
         'As visitas pendentes foram realocadas para os próximos dias.'
       );
     }
   };
+
+  if (isLoading) {
+    return (
+      <>
+        <GlobalStyles />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          fontSize: '20px',
+          color: '#7f8c8d'
+        }}>
+          Carregando visitas...
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

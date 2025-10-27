@@ -15,10 +15,10 @@ export interface Visit {
   };
 }
 
-// Interface para os dados do formulário (usado no React Hook Form)
+
 export interface VisitFormData {
   data: string;
-  quantidadeFormularios: string; // string porque vem do input
+  quantidadeFormularios: string; 
   quantidadeProdutos: string;
   cep: string;
   uf: string;
