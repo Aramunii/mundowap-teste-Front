@@ -17,16 +17,13 @@ import {
 interface VisitListProps {
   visits: Visit[];
   selectedDate: string;
+  onEditVisit: (visit: Visit) => void;
 }
 
-export const VisitList: React.FC<VisitListProps> = ({ visits, selectedDate }) => {
+export const VisitList: React.FC<VisitListProps> = ({ visits, selectedDate, onEditVisit }) => {
   const filteredVisits = visits.filter(visit => 
     visit.data.split('T')[0] === selectedDate
   );
-
-  const handleEdit = (visitId: string) => {
-    alert(`Editar visita ${visitId}`);
-  };
 
   if (filteredVisits.length === 0) {
     return (
@@ -71,7 +68,7 @@ export const VisitList: React.FC<VisitListProps> = ({ visits, selectedDate }) =>
               <TableCell>{visit.endereco.cidade} - {visit.endereco.uf}</TableCell>
               <TableCell>{visit.endereco.cep}</TableCell>
               <TableCell>
-                <EditButton onClick={() => handleEdit(visit.id)}>
+                <EditButton onClick={() => onEditVisit(visit)}>
                   ✏️ Editar
                 </EditButton>
               </TableCell>

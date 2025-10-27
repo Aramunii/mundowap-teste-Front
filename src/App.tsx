@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Header } from './components/Header/Header';
 import { DateSelector } from './components/DateSelector/DateSelector';
 import { VisitList } from './components/VisitList/VisitList';
+import { VisitModal } from './components/VisitModal/VisitModal';
 import { Visit } from './types/visit';
 import { GlobalStyles } from './App.styles';
 
@@ -10,8 +11,11 @@ function App() {
     new Date().toISOString().split('T')[0]
   );
 
-  // Dados de exemplo (depois vamos substituir por dados reais)
-  const [visits] = useState<Visit[]>([
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
+
+
+  const [visits, setVisits] = useState<Visit[]>([
     {
       id: '1',
       data: new Date().toISOString(),
@@ -25,7 +29,7 @@ function App() {
         logradouro: 'Avenida Paulista',
         bairro: 'Bela Vista',
         numero: '1578',
-        complemento: 'Apto 12'
+        complemento: ''
       }
     },
     {
@@ -41,13 +45,43 @@ function App() {
         logradouro: 'Rua Augusta',
         bairro: 'Consolação',
         numero: '2000',
-        complemento: 'Casa'
+        complemento: 'Apto 101'
       }
     }
   ]);
 
   const handleOpenModal = () => {
-    alert('Modal de registro será criado em seguida!');
+    setEditingVisit(null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingVisit(null);
+  };
+
+    const handleSaveVisit = (visitData: Omit<Visit, 'id'>) => {
+    if (editingVisit) {
+      // Editar visita existente
+      setVisits(visits.map(v => 
+        v.id === editingVisit.id 
+          ? { ...visitData, id: editingVisit.id, status: editingVisit.status }
+          : v
+      ));
+    } else {
+      // Criar nova visita
+      const newVisit: Visit = {
+        ...visitData,
+        id: Date.now().toString(), // ID temporário
+        status: 'pendente'
+      };
+      setVisits([...visits, newVisit]);
+    }
+  };
+
+  const handleEditVisit = (visit: Visit) => {
+    setEditingVisit(visit);
+    setIsModalOpen(true);
   };
 
   return (
@@ -61,9 +95,18 @@ function App() {
       <VisitList 
         visits={visits}
         selectedDate={selectedDate}
+        onEditVisit={handleEditVisit}
+      />
+      <VisitModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveVisit}
+        visits={visits}
+        editingVisit={editingVisit}
       />
     </>
   );
 }
+
 
 export default App;
