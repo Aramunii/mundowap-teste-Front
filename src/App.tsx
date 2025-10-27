@@ -5,15 +5,17 @@ import { VisitList } from './components/VisitList/VisitList';
 import { VisitModal } from './components/VisitModal/VisitModal';
 import { Visit } from './types/visit';
 import { GlobalStyles } from './App.styles';
+import { showSuccess, showConfirm } from './utils/alerts';
+import { closeDateAndRelocateVisits } from './utils/dateUtils';
 
 function App() {
+
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
-
 
   const [visits, setVisits] = useState<Visit[]>([
     {
@@ -47,6 +49,22 @@ function App() {
         numero: '2000',
         complemento: 'Apto 101'
       }
+    },
+    {
+      id: '3',
+      data: new Date().toISOString(),
+      status: 'pendente',
+      quantidadeFormularios: 1,
+      quantidadeProdutos: 2,
+      endereco: {
+        cep: '01310-300',
+        uf: 'SP',
+        cidade: 'São Paulo',
+        logradouro: 'Rua da Consolação',
+        bairro: 'Consolação',
+        numero: '100',
+        complemento: ''
+      }
     }
   ]);
 
@@ -60,19 +78,17 @@ function App() {
     setEditingVisit(null);
   };
 
-    const handleSaveVisit = (visitData: Omit<Visit, 'id'>) => {
+  const handleSaveVisit = (visitData: Omit<Visit, 'id'>) => {
     if (editingVisit) {
-      // Editar visita existente
       setVisits(visits.map(v => 
         v.id === editingVisit.id 
           ? { ...visitData, id: editingVisit.id, status: editingVisit.status }
           : v
       ));
     } else {
-      // Criar nova visita
       const newVisit: Visit = {
         ...visitData,
-        id: Date.now().toString(), // ID temporário
+        id: Date.now().toString(),
         status: 'pendente'
       };
       setVisits([...visits, newVisit]);
@@ -82,6 +98,38 @@ function App() {
   const handleEditVisit = (visit: Visit) => {
     setEditingVisit(visit);
     setIsModalOpen(true);
+  };
+
+  const handleCompleteVisit = async (visitId: string) => {
+    const result = await showConfirm(
+      'Concluir Visita',
+      'Tem certeza que deseja marcar esta visita como concluída?'
+    );
+
+    if (result.isConfirmed) {
+      setVisits(visits.map(v =>
+        v.id === visitId
+          ? { ...v, status: 'concluido' as const }
+          : v
+      ));
+      showSuccess('Sucesso!', 'Visita marcada como concluída!');
+    }
+  };
+
+  const handleCloseDate = async (date: string) => {
+    const result = await showConfirm(
+      'Fechar Data',
+      'Todas as visitas pendentes serão movidas para os próximos dias disponíveis. Deseja continuar?'
+    );
+
+    if (result.isConfirmed) {
+      const relocatedVisits = closeDateAndRelocateVisits(visits, date);
+      setVisits(relocatedVisits);
+      showSuccess(
+        'Data Fechada!',
+        'As visitas pendentes foram realocadas para os próximos dias.'
+      );
+    }
   };
 
   return (
@@ -96,6 +144,8 @@ function App() {
         visits={visits}
         selectedDate={selectedDate}
         onEditVisit={handleEditVisit}
+        onCompleteVisit={handleCompleteVisit}
+        onCloseDate={handleCloseDate}
       />
       <VisitModal
         isOpen={isModalOpen}
@@ -107,6 +157,5 @@ function App() {
     </>
   );
 }
-
 
 export default App;

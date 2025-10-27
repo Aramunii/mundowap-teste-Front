@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Visit, VisitFormData } from '../../types/visit';
 import { getAddressByCep } from '../../services/api';
-import { canAddVisit, calculateVisitDuration, formatMinutes, getTotalMinutesByDate, MAX_MINUTES_PER_DAY} from '../../utils/dateUtils';
-import { showTimeError, showError, showSuccess} from '../../utils/alerts';
+import { canAddVisit, calculateVisitDuration, formatMinutes, getTotalMinutesByDate, MAX_MINUTES_PER_DAY } from '../../utils/dateUtils';
+import { showTimeError, showSuccess } from '../../utils/alerts';
 import {
   Overlay,
   ModalContainer,
@@ -21,7 +21,8 @@ import {
   ModalFooter,
   CancelButton,
   SubmitButton,
-  InfoMessage
+  InfoMessage,
+  WarningMessage
 } from './styles';
 
 interface VisitModalProps {
@@ -55,57 +56,98 @@ export const VisitModal: React.FC<VisitModalProps> = ({
     reset,
     formState: { errors, isValid }
   } = useForm<VisitFormData>({
-    mode: 'onChange',
-    defaultValues: editingVisit ? {
-      data: editingVisit.data.split('T')[0],
-      quantidadeFormularios: editingVisit.quantidadeFormularios.toString(),
-      quantidadeProdutos: editingVisit.quantidadeProdutos.toString(),
-      cep: editingVisit.endereco.cep,
-      uf: editingVisit.endereco.uf,
-      cidade: editingVisit.endereco.cidade,
-      logradouro: editingVisit.endereco.logradouro,
-      bairro: editingVisit.endereco.bairro,
-      numero: editingVisit.endereco.numero,
-      complemento: editingVisit.endereco.complemento
-    } : undefined
+    mode: 'onChange'
   });
+
+  // Efeito para resetar e preencher o formulário quando o modal abre ou editingVisit muda
+  useEffect(() => {
+    if (isOpen) {
+      if (editingVisit) {
+        // Modo edição - preenche com dados da visita
+        const dateOnly = editingVisit.data.split('T')[0];
+        
+        reset({
+          data: dateOnly,
+          quantidadeFormularios: editingVisit.quantidadeFormularios.toString(),
+          quantidadeProdutos: editingVisit.quantidadeProdutos.toString(),
+          cep: editingVisit.endereco.cep,
+          uf: editingVisit.endereco.uf,
+          cidade: editingVisit.endereco.cidade,
+          logradouro: editingVisit.endereco.logradouro,
+          bairro: editingVisit.endereco.bairro,
+          numero: editingVisit.endereco.numero,
+          complemento: editingVisit.endereco.complemento || ''
+        });
+        
+        // Habilita edição de campos do endereço
+        setCanEditLogradouro(true);
+        setCanEditBairro(true);
+      } else {
+        // Modo criação - limpa o formulário
+        reset({
+          data: '',
+          quantidadeFormularios: '',
+          quantidadeProdutos: '',
+          cep: '',
+          uf: '',
+          cidade: '',
+          logradouro: '',
+          bairro: '',
+          numero: '',
+          complemento: ''
+        });
+        
+        setCanEditLogradouro(false);
+        setCanEditBairro(false);
+      }
+      
+      setCepError('');
+    }
+  }, [isOpen, editingVisit, reset]);
 
   const cepValue = watch('cep');
   const dataValue = watch('data');
   const quantidadeFormularios = watch('quantidadeFormularios');
   const quantidadeProdutos = watch('quantidadeProdutos');
 
+  // Observa mudanças no CEP (apenas em modo criação ou quando CEP realmente muda)
   useEffect(() => {
+    if (!isOpen) return;
+    
     const cleanCep = cepValue?.replace(/\D/g, '');
     
     if (cleanCep && cleanCep.length === 8) {
-      fetchAddress(cleanCep);
-    } else if (cepValue) {
-      setValue('uf', '');
-      setValue('cidade', '');
-      setValue('logradouro', '');
-      setValue('bairro', '');
-      setCanEditBairro(false);
-      setCanEditLogradouro(false);
-      setCanEditUf(false);
-    setCanEditCidade(false);
+      // Verifica se o CEP mudou em relação ao original (em modo edição)
+      const originalCep = editingVisit?.endereco.cep.replace(/\D/g, '');
+      
+      if (!editingVisit || cleanCep !== originalCep) {
+        fetchAddress(cleanCep);
+      }
+    } else if (cepValue && cepValue.length > 0) {
+      // Limpa campos quando CEP está incompleto
+      if (!editingVisit) {
+        setValue('uf', '');
+        setValue('cidade', '');
+        setValue('logradouro', '');
+        setValue('bairro', '');
+        setCanEditBairro(false);
+        setCanEditLogradouro(false);
+      }
       setCepError('');
     }
-  }, [cepValue]);
+  }, [cepValue, isOpen]);
 
   const fetchAddress = async (cep: string) => {
     setIsLoadingCep(true);
     setCepError('');
     
+    // Limpa campos durante a busca
     setValue('uf', '');
     setValue('cidade', '');
     setValue('logradouro', '');
     setValue('bairro', '');
     setCanEditBairro(false);
     setCanEditLogradouro(false);
-    setCanEditUf(false);
-    setCanEditCidade(false);
-
 
     try {
       const address = await getAddressByCep(cep);
@@ -115,19 +157,13 @@ export const VisitModal: React.FC<VisitModalProps> = ({
       setValue('logradouro', address.logradouro);
       setValue('bairro', address.bairro);
       
-      setCanEditLogradouro(!address.logradouro);
-      setCanEditBairro(!address.bairro);
-        setCanEditUf(!address.uf);
-        setCanEditCidade(!address.localidade);
-
+      setCanEditLogradouro(!address.logradouro || address.logradouro.length === 0);
+      setCanEditBairro(!address.bairro || address.bairro.length === 0);
       
     } catch (error) {
       setCepError('CEP não encontrado');
       setCanEditBairro(true);
       setCanEditLogradouro(true);
-      setCanEditUf(true);
-      setCanEditCidade(true);
-
     } finally {
       setIsLoadingCep(false);
     }
@@ -152,8 +188,8 @@ export const VisitModal: React.FC<VisitModalProps> = ({
     }
 
     const visit: Omit<Visit, 'id'> = {
-      data: new Date(data.data).toISOString(),
-      status: 'pendente',
+      data: new Date(data.data + 'T00:00:00').toISOString(),
+      status: editingVisit?.status || 'pendente',
       quantidadeFormularios: parseInt(data.quantidadeFormularios),
       quantidadeProdutos: parseInt(data.quantidadeProdutos),
       endereco: {
@@ -188,11 +224,13 @@ export const VisitModal: React.FC<VisitModalProps> = ({
     onClose();
   };
 
+  // Calcula a duração estimada da visita
   const estimatedDuration = calculateVisitDuration(
     parseInt(quantidadeFormularios) || 0,
     parseInt(quantidadeProdutos) || 0
   );
 
+  // Calcula o tempo já ocupado na data selecionada
   const usedMinutes = dataValue 
     ? getTotalMinutesByDate(
         visits.filter(v => v.id !== editingVisit?.id),
@@ -200,7 +238,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
       )
     : 0;
 
-
+  // Calcula o tempo disponível
   const availableMinutes = MAX_MINUTES_PER_DAY - usedMinutes;
 
   const willExceedLimit = estimatedDuration > availableMinutes;
@@ -264,14 +302,26 @@ export const VisitModal: React.FC<VisitModalProps> = ({
 
             {estimatedDuration > 0 && !willExceedLimit && (
               <InfoMessage>
-                Duração estimada: {formatMinutes(estimatedDuration)}
+                 Duração estimada: {formatMinutes(estimatedDuration)}
+                {dataValue && (
+                  <>
+                    <br />
+                    Tempo disponível na data: {formatMinutes(availableMinutes)}
+                  </>
+                )}
               </InfoMessage>
             )}
 
-            {willExceedLimit && (
-              <ErrorMessage>
-                Tempo estimado de {formatMinutes(estimatedDuration)} excede o limite disponível de {formatMinutes(availableMinutes)} para esta data.
-              </ErrorMessage>
+            {willExceedLimit && dataValue && (
+              <WarningMessage>
+                ATENÇÃO: Limite de 8 horas ultrapassado!
+                <br />
+                Duração da visita: {formatMinutes(estimatedDuration)}
+                <br />
+                Tempo disponível: {formatMinutes(availableMinutes)}
+                <br />
+                Excedente: {formatMinutes(estimatedDuration - availableMinutes)}
+              </WarningMessage>
             )}
 
             <FormRow>
@@ -279,7 +329,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Label>CEP *</Label>
                 <Input
                   type="text"
-                  maxLength={8}
+                  maxLength={9}
                   placeholder="00000-000"
                   {...register('cep', {
                     required: 'CEP é obrigatório',
@@ -301,7 +351,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Input
                   type="text"
                   {...register('uf')}
-                  disabled ={isLoadingCep || !canEditUf}
+                  disabled
                   readOnly
                 />
               </FormGroup>
@@ -311,7 +361,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Input
                   type="text"
                   {...register('cidade')}
-                  disabled={isLoadingCep || !canEditCidade}
+                  disabled
                   readOnly
                 />
               </FormGroup>
@@ -323,7 +373,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Input
                   type="text"
                   {...register('logradouro', { required: 'Logradouro é obrigatório' })}
-                  disabled={isLoadingCep || !canEditLogradouro}
+                  disabled={isLoadingCep || (!canEditLogradouro && !editingVisit)}
                 />
                 {errors.logradouro && <ErrorMessage>{errors.logradouro.message}</ErrorMessage>}
               </FormGroup>
@@ -333,7 +383,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({
                 <Input
                   type="text"
                   {...register('bairro', { required: 'Bairro é obrigatório' })}
-                  disabled={isLoadingCep || !canEditBairro}
+                  disabled={isLoadingCep || (!canEditBairro && !editingVisit)}
                 />
                 {errors.bairro && <ErrorMessage>{errors.bairro.message}</ErrorMessage>}
               </FormGroup>

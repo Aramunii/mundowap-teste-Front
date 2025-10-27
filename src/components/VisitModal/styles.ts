@@ -179,6 +179,28 @@ export const InfoMessage = styled.div`
   font-size: 14px;
   color: #2c3e50;
   font-weight: 500;
+  line-height: 1.6;
+`;
+
+export const WarningMessage = styled.div`
+  background-color: #fff3cd;
+  border-left: 4px solid #f39c12;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #856404;
+  font-weight: 600;
+  line-height: 1.6;
+  animation: pulse 2s ease-in-out infinite;
+
+  @keyframes pulse {
+    0%, 100% {
+      background-color: #fff3cd;
+    }
+    50% {
+      background-color: #ffe8a1;
+    }
+  }
 `;
 
 export const ModalFooter = styled.div`
